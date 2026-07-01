@@ -12,7 +12,7 @@ class TrainConfig:
     # model related params
     MODEL : str = "Add the yolo model of your choice"
     """Path belonging to the YOLO-MODEL variant"""
-    IMG_SIZE : tuple = (224,224)
+    IMG_SIZE : int = 224
     """Size of the image"""
 
     #HyperParameters
@@ -23,6 +23,12 @@ class TrainConfig:
     """Train-Test split ratio"""
     LR : float = 0.001
     """learning rate for the training epoch"""
+
+
+    #wandb params
+    PROJECT_NAME : str = "Indi-Yolo"
+
+    
 
 
 
