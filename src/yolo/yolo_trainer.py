@@ -5,13 +5,13 @@ from pathlib import Path
 class VehicleDataTrainer:
     """This class defines the training setup for Indi-YOLo"""
     def __init__(self,config) -> None:
-        self.config=config
+        self.cfg=config
         self.model : YOLO = YOLO(self.cfg.MODEL)
 
 
     def train(self):
         wandb.init(
-            project="self.cfg.PROJECT_NAME",
+            project=self.cfg.PROJECT_NAME,
             config={
                 'learning_rate':self.cfg.LR,
                 'epochs': self.cfg.EPOCHS,
@@ -27,7 +27,7 @@ class VehicleDataTrainer:
             lr0=self.cfg.LR,
             project=self.cfg.PROJECT_NAME,
             
-            device="cuda"  # Set to 'cpu' if no GPU available
+            device="cuda"  
         )
         wandb.finish()
         
