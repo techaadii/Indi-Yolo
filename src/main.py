@@ -7,6 +7,15 @@ from src.yolo.yolo_trainer import VehicleDatasetTrainer
 
 def main()->None:
     """Main function to initiate the training loop"""
+    cfg = TrainConfig()
+
+    # 1. Prepare Folders
+    dm = VehicleDataManager(cfg)
+    dm.prepare()
+
+    # 2. Train and Log
+    trainer = VehicleTrainer(cfg)
+    trainer.train()
 
 
 if __name__ == "__main__":
