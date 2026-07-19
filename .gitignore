@@ -216,3 +216,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+finetuning/
+vehicle_dataset/
+runs/
+*.pt
+wandb/

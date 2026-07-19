@@ -1,67 +1,67 @@
-import os
 import shutil
 import random
 import logging
 from pathlib import Path
-# Assuming your folder structure is src/data_manager.py, 
-# then configs is at the same level as data_manager inside src/
-from src.configs.train_config import TrainConfig 
+
 
 class VehicleDataManager:
-    """
-    Class prepares the IISERB Vehicle Dataset in the YOLO Training Format.
-    """
-
-    def __init__(self, config: TrainConfig) -> None:
+    def __init__(self, config) -> None:
         self._cfg = config
-        # Use the names consistently
         self._source_path = Path(self._cfg.SOURCE_DIR)
         self._dest_path = Path(self._cfg.DATASET_ROOT)
 
-    def extract_labels(self, file_path: Path) -> str | None:
-        """
-        Extracts the label from the image paths.
-        Input: AB4_20260204_132137_frame026910_bus_0.56
-        Output: bus
-        """
+    def extract_label(self, file_path: Path) -> str | None:
         try:
-            # Fix: match the argument name 'file_path'
+            # Splits: AB4_..._bus_0.56.jpg -> bus
             return file_path.stem.split("_")[-2]
-        except (IndexError, AttributeError):
+        except IndexError, AttributeError:
             return None
 
     def prepare(self) -> None:
-        # Fix: use self._dest_path
         if self._dest_path.exists():
-            logging.info(f"Cleaning existing directory: {self._dest_path}")
             shutil.rmtree(self._dest_path)
 
-        # Fix: use self._source_path
-        if not self._source_path.exists():
-            raise FileNotFoundError(f"Source directory not found: {self._source_path}")
+        # 1. Group all images by their label first
+        all_files = [
+            f
+            for f in self._source_path.iterdir()
+            if f.suffix.lower() in [".jpg", ".png", ".jpeg"]
+        ]
+        label_groups = {}
 
-        images = [f for f in self._source_path.iterdir() if f.suffix.lower() in ['.jpg', '.png', '.jpeg']]
-        
-        if not images:
-            logging.warning("No images found in source directory!")
-            return
+        for f in all_files:
+            label = self.extract_label(f)
+            if label:
+                if label not in label_groups:
+                    label_groups[label] = []
+                label_groups[label].append(f)
 
-        random.shuffle(images)
+        logging.info(f"Found {len(label_groups)} unique classes.")
 
-        split_idx = int(len(images) * self._cfg.SPLIT_RATIO)
+        # 2. Split each class individually (Stratified Split)
+        for label, files in label_groups.items():
+            random.shuffle(files)
 
-        dataset_splits = {
-            "train": images[:split_idx],
-            "val": images[split_idx:],
-        }
+            # Ensure at least 1 image goes to validation if class is tiny
+            split_idx = int(len(files) * self._cfg.SPLIT_RATIO)
+            if split_idx == len(files) and len(files) > 1:
+                split_idx -= 1
 
-        for split, files in dataset_splits.items():
-            for f in files:
-                # Fix: match the method name 'extract_labels'
-                label = self.extract_labels(f)
-                if label:
-                    target_dir = self._dest_path / split / label
-                    target_dir.mkdir(parents=True, exist_ok=True)
-                    shutil.copy(f, target_dir / f.name)
-        
-        logging.info(f"Dataset ready at {self._dest_path}")
+            train_files = files[:split_idx]
+            val_files = files[split_idx:]
+
+            # If val_files is empty, move one from train to val
+            if not val_files and len(train_files) > 0:
+                val_files.append(train_files.pop())
+
+            # 3. Copy files
+            self._copy_set(train_files, "train", label)
+            self._copy_set(val_files, "val", label)
+
+        logging.info(f"Stratified dataset prepared at {self._dest_path}")
+
+    def _copy_set(self, files, subset, label):
+        target_dir = self._dest_path / subset / label
+        target_dir.mkdir(parents=True, exist_ok=True)
+        for f in files:
+            shutil.copy(f, target_dir / f.name)
